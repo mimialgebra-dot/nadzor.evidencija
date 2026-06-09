@@ -160,8 +160,8 @@
     let audioCtx = null;
     let alarmInterval = null;
 
-    let ukupnoSekundiRada = 0;
-    let brojacRadaInterval = null;
+    // POPRAVLJENO: Koristimo sistemsko vrijeme umjesto ručnog brojača sekundi
+    let vrijemePocetkaSmjene = null;
 
     function svirajAlarm() {
         if (!audioCtx) {
@@ -205,7 +205,14 @@
         osc.stop(audioCtx.currentTime + 0.15);
     }
 
-    function formatirajVrijemeRada(ukupnoSekundi) {
+    // POPRAVLJENO: Funkcija računa razliku između sadašnjeg trenutka i početka smjene
+    function formatirajVrijemeRada() {
+        if (!vrijemePocetkaSmjene) return "00:00:00";
+        
+        let sada = Date.now();
+        let razlikaUMilisekundama = sada - vrijemePocetkaSmjene;
+        let ukupnoSekundi = Math.floor(razlikaUMilisekundama / 1000);
+
         let sati = Math.floor(ukupnoSekundi / 3600);
         let minute = Math.floor((ukupnoSekundi % 3600) / 60);
         let sekunde = ukupnoSekundi % 60;
@@ -239,11 +246,8 @@
         document.getElementById("btnPotvrda").style.display = "none";
         document.getElementById("timer").style.display = "none";
 
-        ukupnoSekundiRada = 0;
-        if(brojacRadaInterval) clearInterval(brojacRadaInterval);
-        brojacRadaInterval = setInterval(() => {
-            ukupnoSekundiRada++;
-        }, 1000);
+        // POPRAVLJENO: Bilježimo točan trenutak klika na gumb
+        vrijemePocetkaSmjene = Date.now();
 
         posaljiPoruku(statusPrijave, WEBHOOK_URL);
         rasporediSljedecuProvjeru();
@@ -328,7 +332,7 @@
         clearInterval(timerInterval);
         zaustaviAlarm();
         
-        let vrijemeRadaFormat = formatirajVrijemeRada(ukupnoSekundiRada);
+        let vrijemeRadaFormat = formatirajVrijemeRada();
         posaljiPoruku(`🟢 **${studentName}** je potvrdio/la prisutnost. (Preostalo vrijeme: ${timeLeft}s | ⏱️ Ukupno trajanje smjene: ${vrijemeRadaFormat})`, WEBHOOK_URL);
         rasporediSljedecuProvjeru();
     }
@@ -339,7 +343,7 @@
         document.getElementById("btnPotvrda").style.display = "none";
         document.getElementById("timer").innerText = "PROPUŠTENO";
         
-        let vrijemeRadaFormat = formatirajVrijemeRada(ukupnoSekundiRada);
+        let vrijemeRadaFormat = formatirajVrijemeRada();
         posaljiPoruku(`🔴 **ALARM:** Student/ica **${studentName}** NIJE potvrdio/la prisutnost! (⏱️ Ukupno trajanje smjene: ${vrijemeRadaFormat})`, WEBHOOK_URL);
         setTimeout(rasporediSljedecuProvjeru, 5000);
     }
@@ -353,7 +357,7 @@
 
         const sada = new Date();
         const vrijemeFormat = `${String(sada.getHours()).padStart(2, '0')}:${String(sada.getMinutes()).padStart(2, '0')}h`;
-        let vrijemeRadaFormat = formatirajVrijemeRada(ukupnoSekundiRada);
+        let vrijemeRadaFormat = formatirajVrijemeRada();
 
         const porukaStatusa = `📊 **IZVJEŠTAJ (${studentName}):** \`[${vrijemeFormat}]\` **${grupa}** -> *${statusTekst}* | *(⏱️ Rad: ${vrijemeRadaFormat})*`;
 
