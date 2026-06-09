@@ -163,15 +163,18 @@
     let ukupnoSekundiRada = 0;
     let brojacRadaInterval = null;
 
-    // POPRAVLJENO: Ispravljena sintaksa pokretanja audio konteksta i oscilatora
+    // VRAĆENA PRVOBITNA METODA: Čisti, izvorni kod zvuka koji provjereno radi
     function svirajAlarm() {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
+        
         alarmInterval = setInterval(() => {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
             let osc = audioCtx.createOscillator();
-            let gain = audioCtx.createGain(); // Fiksirano (uklonjen bug)
+            let gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.type = "sawtooth";
@@ -191,6 +194,7 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
         if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        
         let osc = audioCtx.createOscillator();
         let gain = audioCtx.createGain();
         osc.connect(gain);
@@ -222,18 +226,6 @@
             alert("⚠️ Pogrešan PIN!");
             return;
         }
-
-        // OTKLJUČAVANJE ZVUKA U POZADINI: Inicijaliziramo audio čim kliknu gumb za prijavu
-        try {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            let besumniOsc = audioCtx.createOscillator();
-            let besumniGain = audioCtx.createGain();
-            besumniGain.gain.setValueAtTime(0, audioCtx.currentTime); // Potpuno nečujno
-            besumniOsc.connect(besumniGain);
-            besumniGain.connect(audioCtx.destination);
-            besumniOsc.start();
-            besumniOsc.stop(audioCtx.currentTime + 0.05);
-        } catch(e) { console.log("Audio init bypass"); }
 
         let statusPrijave = `🚀 **${studentName}** je započeo/la smjenu.`;
         if (sessionStorage.getItem("smjenaPokrenutaJednom") === "true") {
@@ -268,119 +260,4 @@
         if (tekst === "") { alert("Molimo upišite opis problema!"); return; }
 
         const sada = new Date();
-        const točnoVrijeme = `${String(sada.getHours()).padStart(2, '0')}:${String(sada.getMinutes()).padStart(2, '0')}`;
-
-        const porukaIncidenta = `⚠️ **[INCIDENT]** \`[${grupa}]\` | **${kategorija}**\n📌 **${točnoVrijeme}** - ${tekst} *(Zapisao: ${studentName})*`;
-
-        posaljiPoruku(porukaIncidenta, WEBHOOK_INCIDENTI_URL);
-
-        document.getElementById("incidentText").value = "";
-        alert("Incident uspješno evidentiran i poslan u kanal #incidenti!");
-    }
-
-    let reportTimeLeft = 30 * 60;
-    let reportTimerInterval = null;
-
-    function pokreniPolusatniTajmer() {
-        reportTimeLeft = 30 * 60; 
-        document.getElementById("reportTimer").classList.remove("timer-expired");
-        if(reportTimerInterval) clearInterval(reportTimerInterval);
-
-        reportTimerInterval = setInterval(() => {
-            reportTimeLeft--;
-            let minute = Math.floor(reportTimeLeft / 60);
-            let sekunde = reportTimeLeft % 60;
-            document.getElementById("reportTimer").innerText = `${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`;
-
-            if (reportTimeLeft <= 0) {
-                document.getElementById("reportTimer").innerText = "VRIJEME JE ISTEKLO! POŠALJITE STATUS!";
-                document.getElementById("reportTimer").classList.add("timer-expired");
-                if (reportTimeLeft % 60 === 0 || reportTimeLeft === 0) {
-                    svirajBlagiPodsjetnik();
-                }
-            }
-        }, 1000);
-    }
-
-    function rasporediSljedecuProvjeru() {
-        document.body.classList.remove("panic-mode");
-        document.getElementById("alertTitle").innerText = "Sustav radi u pozadini...";
-        document.getElementById("statusMessage").innerText = "Čekanje na sljedeću nasumičnu provjeru...";
-        document.getElementById("btnPotvrda").style.display = "none";
-        document.getElementById("timer").style.display = "none";
-
-        const minMinuta = 10; 
-        const maxMinuta = 20; 
-        const nasumicniMilisekunde = Math.floor(Math.random() * (maxMinuta - minMinuta + 1) + minMinuta) * 60 * 1000;
-        nextCheckTimeout = setTimeout(aktivirajProvjeru, nasumicniMilisekunde);
-    }
-
-    function aktivirajProvjeru() {
-        document.body.classList.add("panic-mode");
-        document.getElementById("alertTitle").innerText = "PROVJERA BUDNOSTI!";
-        document.getElementById("statusMessage").innerText = "Kliknite gumb odmah!";
-        document.getElementById("btnPotvrda").style.display = "block";
-        document.getElementById("timer").style.display = "block";
-        
-        timeLeft = 60;
-        document.getElementById("timer").innerText = timeLeft;
-        try { svirajAlarm(); } catch(e) {}
-
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            document.getElementById("timer").innerText = timeLeft;
-            if (timeLeft <= 0) { izgubiPrisutnost(); }
-        }, 1000);
-    }
-
-    function potvrdiPrisutnost() {
-        clearInterval(timerInterval);
-        zaustaviAlarm();
-        
-        let DiagnosticVrijeme = formatirajVrijemeRada(ukupnoSekundiRada);
-        posaljiPoruku(`🟢 **${studentName}** je potvrdio/la prisutnost. (Preostalo vrijeme: ${timeLeft}s | ⏱️ Ukupno trajanje smjene: ${DiagnosticVrijeme})`, WEBHOOK_URL);
-        rasporediSljedecuProvjeru();
-    }
-
-    function izgubiPrisutnost() {
-        clearInterval(timerInterval);
-        zaustaviAlarm();
-        document.getElementById("btnPotvrda").style.display = "none";
-        document.getElementById("timer").innerText = "PROPUŠTENO";
-        
-        let DiagnosticVrijeme = formatirajVrijemeRada(ukupnoSekundiRada);
-        posaljiPoruku(`🔴 **ALARM:** Student/ica **${studentName}** NIJE potvrdio/la prisutnost! (⏱️ Ukupno trajanje smjene: ${DiagnosticVrijeme})`, WEBHOOK_URL);
-        setTimeout(rasporediSljedecuProvjeru, 5000);
-    }
-
-    function posaljiStatusGrupe() {
-        const grupa = document.getElementById("groupSelect").value;
-        const statusTekst = document.getElementById("groupStatusText").value.trim();
-        
-        if (grupa === "") { alert("Molimo odaberite grupu!"); return; }
-        if (statusTekst === "") { alert("Molimo upišite kratki status grupe!"); return; }
-
-        const sada = new Date();
-        const vrijemeFormat = `${String(sada.getHours()).padStart(2, '0')}:${String(sada.getMinutes()).padStart(2, '0')}h`;
-        let DiagnosticVrijeme = formatirajVrijemeRada(ukupnoSekundiRada);
-
-        const porukaStatusa = `📊 **IZVJEŠTAJ (${studentName}):** \`[${vrijemeFormat}]\` **${grupa}** -> *${statusTekst}* | *(⏱️ Rad: ${DiagnosticVrijeme})*`;
-
-        posaljiPoruku(porukaStatusa, WEBHOOK_URL);
-        document.getElementById("groupStatusText").value = "";
-        document.getElementById("groupSelect").value = "";
-        alert("Status grupe uspješno poslan!");
-        pokreniPolusatniTajmer();
-    }
-
-    function posaljiPoruku(tekst, urlKanala) {
-        fetch(urlKanala, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: tekst })
-        }).catch(err => console.error(err));
-    }
-</script>
-
-</body>
-</html>
+        const točnoVrijeme = `${String(sada.getHours()).padStart(2, '0')}:${String(sada.getMinutes()).padStart(
