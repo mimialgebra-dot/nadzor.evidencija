@@ -45,7 +45,7 @@
             font-weight: bold;
         }
         button:hover { background-color: #0056b3; }
-        #alertArea, #statusReportArea, #incidentArea { display: none; }
+        #alertArea, #statusReportArea, #incidentArea, #logoutArea { display: none; }
         .panic-mode { background-color: #8b0000 !important; }
         #timer { font-size: 48px; font-weight: bold; margin: 20px 0; color: #ff3333; }
         #statusMessage { margin-top: 15px; color: #aaa; font-style: italic; }
@@ -137,6 +137,11 @@
         <textarea id="groupStatusText" placeholder="Npr. Predavač dijeli ekran, audio u redu, 15 polaznika"></textarea>
         <button onclick="posaljiStatusGrupe()" style="background-color: #17a2b8;">Pošalji status grupe</button>
     </div>
+
+    <div id="logoutArea">
+        <hr>
+        <button onclick="zavrsiSmjenu()" style="background-color: #6c757d; font-size: 14px; margin-top: 5px;">🛑 Završi smjenu i odjavi se</button>
+    </div>
 </div>
 
 <script>
@@ -160,7 +165,6 @@
     let audioCtx = null;
     let alarmInterval = null;
 
-    // POPRAVLJENO: Koristimo sistemsko vrijeme umjesto ručnog brojača sekundi
     let vrijemePocetkaSmjene = null;
 
     function svirajAlarm() {
@@ -205,7 +209,6 @@
         osc.stop(audioCtx.currentTime + 0.15);
     }
 
-    // POPRAVLJENO: Funkcija računa razliku između sadašnjeg trenutka i početka smjene
     function formatirajVrijemeRada() {
         if (!vrijemePocetkaSmjene) return "00:00:00";
         
@@ -243,10 +246,10 @@
         document.getElementById("alertArea").style.display = "block";
         document.getElementById("statusReportArea").style.display = "block";
         document.getElementById("incidentArea").style.display = "block";
+        document.getElementById("logoutArea").style.display = "block";
         document.getElementById("btnPotvrda").style.display = "none";
         document.getElementById("timer").style.display = "none";
 
-        // POPRAVLJENO: Bilježimo točan trenutak klika na gumb
         vrijemePocetkaSmjene = Date.now();
 
         posaljiPoruku(statusPrijave, WEBHOOK_URL);
@@ -366,6 +369,41 @@
         document.getElementById("groupSelect").value = "";
         alert("Status grupe uspješno poslan!");
         pokreniPolusatniTajmer();
+    }
+
+    // DODANO: Funkcija za prekid rada, slanje statistike i resetiranje sučelja
+    function zavrsiSmjenu() {
+        if (!confirm("Jeste li sigurni da želite završiti smjenu i odjaviti se?")) return;
+
+        let konačnoVrijemeRada = formatirajVrijemeRada();
+        let statusOdjave = `🏁 **${studentName}** je USPIJEŠNO ZAVRŠIO/LA SMJENU. (⏱️ Ukupno trajanje cijele smjene: ${konačnoVrijemeRada})`;
+
+        // Zaustavljanje svih aktivnih tajmera i alarma u pozadini
+        clearInterval(timerInterval);
+        clearInterval(reportTimerInterval);
+        clearTimeout(nextCheckTimeout);
+        zaustaviAlarm();
+
+        // Slanje obavijesti na Discord kanal
+        posaljiPoruku(statusOdjave, WEBHOOK_URL);
+
+        // Resetiranje varijabli i brisanje sesije
+        studentName = "";
+        studentPinEntered = "";
+        vrijemePocetkaSmjene = null;
+        sessionStorage.removeItem("smjenaPokrenutaJednom");
+
+        // Vraćanje sučelja na početni ekran za prijavu
+        document.getElementById("loginArea").style.display = "block";
+        document.getElementById("alertArea").style.display = "none";
+        document.getElementById("statusReportArea").style.display = "none";
+        document.getElementById("incidentArea").style.display = "none";
+        document.getElementById("logoutArea").style.display = "none";
+        document.getElementById("studentPin").value = "";
+        document.getElementById("profileSelect").value = "";
+        document.body.classList.remove("panic-mode");
+
+        alert("Smjena je uspješno završena. Podaci su poslani na Discord!");
     }
 
     function posaljiPoruku(tekst, urlKanala) {
