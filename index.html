@@ -140,10 +140,7 @@
 </div>
 
 <script>
-    // Primarni kanal za redovne provjere i statuse (#nadzor)
     const WEBHOOK_URL = "https://discord.com/api/webhooks/1513816387884417086/hdgj0ZEXw5TUw5UwLN6nkz-k3hFPp-MsmWOmwzN0UUoXZnbqMgAHnwtVe2YESv45CPfA";
-    
-    // VAŠ NOVI KANAL SAMO ZA PROBLEME (#incidenti)
     const WEBHOOK_INCIDENTI_URL = "https://discord.com/api/webhooks/1513920897092685824/3U7ePPel9-bp1bR8QkDA37O3KqJKMXGd4mSTVeuYDTxUchveggTdgNUkmeiymEv8SOQT";
 
     const BAZA_PINOVA = {
@@ -166,6 +163,7 @@
     let ukupnoSekundiRada = 0;
     let brojacRadaInterval = null;
 
+    // POPRAVLJENO: Ispravljena sintaksa pokretanja audio konteksta i oscilatora
     function svirajAlarm() {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -173,7 +171,7 @@
         alarmInterval = setInterval(() => {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             let osc = audioCtx.createOscillator();
-            let gain = createGain();
+            let gain = audioCtx.createGain(); // Fiksirano (uklonjen bug)
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.type = "sawtooth";
@@ -225,6 +223,18 @@
             return;
         }
 
+        // OTKLJUČAVANJE ZVUKA U POZADINI: Inicijaliziramo audio čim kliknu gumb za prijavu
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let besumniOsc = audioCtx.createOscillator();
+            let besumniGain = audioCtx.createGain();
+            besumniGain.gain.setValueAtTime(0, audioCtx.currentTime); // Potpuno nečujno
+            besumniOsc.connect(besumniGain);
+            besumniGain.connect(audioCtx.destination);
+            besumniOsc.start();
+            besumniOsc.stop(audioCtx.currentTime + 0.05);
+        } catch(e) { console.log("Audio init bypass"); }
+
         let statusPrijave = `🚀 **${studentName}** je započeo/la smjenu.`;
         if (sessionStorage.getItem("smjenaPokrenutaJednom") === "true") {
             statusPrijave = `⚠️ **UPOZORENJE:** Korisnik **${studentName}** je ponovno pokrenuo aplikaciju (moguće zatvaranje taba ili osvježavanje stranice)!`;
@@ -249,7 +259,6 @@
         pokreniPolusatniTajmer();
     }
 
-    // SLANJE INCIDENATA IZRAVNO NA VAŠ NOVI WEBHOOK (#incidenti)
     function posaljiIncident() {
         const grupa = document.getElementById("incidentGroup").value;
         const kategorija = document.getElementById("incidentCategory").value;
@@ -263,7 +272,6 @@
 
         const porukaIncidenta = `⚠️ **[INCIDENT]** \`[${grupa}]\` | **${kategorija}**\n📌 **${točnoVrijeme}** - ${tekst} *(Zapisao: ${studentName})*`;
 
-        // Ovdje prisilno šaljemo na drugi webhook url
         posaljiPoruku(porukaIncidenta, WEBHOOK_INCIDENTI_URL);
 
         document.getElementById("incidentText").value = "";
@@ -329,8 +337,8 @@
         clearInterval(timerInterval);
         zaustaviAlarm();
         
-        let vrijemeRadaFormat = formatirajVrijemeRada(ukupnoSekundiRada);
-        posaljiPoruku(`🟢 **${studentName}** je potvrdio/la prisutnost. (Preostalo vrijeme: ${timeLeft}s | ⏱️ Ukupno trajanje smjene: ${vrijemeRadaFormat})`, WEBHOOK_URL);
+        let DiagnosticVrijeme = formatirajVrijemeRada(ukupnoSekundiRada);
+        posaljiPoruku(`🟢 **${studentName}** je potvrdio/la prisutnost. (Preostalo vrijeme: ${timeLeft}s | ⏱️ Ukupno trajanje smjene: ${DiagnosticVrijeme})`, WEBHOOK_URL);
         rasporediSljedecuProvjeru();
     }
 
@@ -340,8 +348,8 @@
         document.getElementById("btnPotvrda").style.display = "none";
         document.getElementById("timer").innerText = "PROPUŠTENO";
         
-        let vrijemeRadaFormat = formatirajVrijemeRada(ukupnoSekundiRada);
-        posaljiPoruku(`🔴 **ALARM:** Student/ica **${studentName}** NIJE potvrdio/la prisutnost! (⏱️ Ukupno trajanje smjene: ${vrijemeRadaFormat})`, WEBHOOK_URL);
+        let DiagnosticVrijeme = formatirajVrijemeRada(ukupnoSekundiRada);
+        posaljiPoruku(`🔴 **ALARM:** Student/ica **${studentName}** NIJE potvrdio/la prisutnost! (⏱️ Ukupno trajanje smjene: ${DiagnosticVrijeme})`, WEBHOOK_URL);
         setTimeout(rasporediSljedecuProvjeru, 5000);
     }
 
@@ -354,9 +362,9 @@
 
         const sada = new Date();
         const vrijemeFormat = `${String(sada.getHours()).padStart(2, '0')}:${String(sada.getMinutes()).padStart(2, '0')}h`;
-        let vrijemeRadaFormat = formatirajVrijemeRada(ukupnoSekundiRada);
+        let DiagnosticVrijeme = formatirajVrijemeRada(ukupnoSekundiRada);
 
-        const porukaStatusa = `📊 **IZVJEŠTAJ (${studentName}):** \`[${vrijemeFormat}]\` **${grupa}** -> *${statusTekst}* | *(⏱️ Rad: ${vrijemeRadaFormat})*`;
+        const porukaStatusa = `📊 **IZVJEŠTAJ (${studentName}):** \`[${vrijemeFormat}]\` **${grupa}** -> *${statusTekst}* | *(⏱️ Rad: ${DiagnosticVrijeme})*`;
 
         posaljiPoruku(porukaStatusa, WEBHOOK_URL);
         document.getElementById("groupStatusText").value = "";
@@ -365,7 +373,6 @@
         pokreniPolusatniTajmer();
     }
 
-    // Modificirana funkcija koja prima URL kanala u koji se šalje
     function posaljiPoruku(tekst, urlKanala) {
         fetch(urlKanala, {
             method: "POST",
