@@ -51,7 +51,7 @@
         #statusMessage { margin-top: 15px; color: #aaa; font-style: italic; }
         hr { border: 0; height: 1px; background: #555; margin: 30px 0; }
         .section-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #007bff; }
-         
+        
         #reportTimerBox {
             background: #222;
             padding: 10px;
@@ -71,7 +71,7 @@
     <div id="loginArea">
         <h2>Provjera Prisutnosti</h2>
         <p>Odaberite Vaš profil i unesite tajni PIN:</p>
-         
+        
         <select id="profileSelect">
             <option value="">-- Odaberite Vaše ime --</option>
             <option value="Nino Jukić">Nino Jukić</option>
@@ -80,7 +80,7 @@
             <option value="Jana Kisdir">Jana Kisdir</option>
             <option value="Mateo Horvat">Mateo Horvat</option>
         </select>
-         
+        
         <input type="password" id="studentPin" placeholder="Unesite Vaš tajni PIN">
         <button onclick="pokreniSustav()">Započni smjenu</button>
     </div>
@@ -95,7 +95,7 @@
     <div id="incidentArea">
         <hr>
         <div class="section-title">🚨 Brzi unos problema (U hodu)</div>
-         
+        
         <select id="incidentGroup">
             <option value="">-- Odaberite oznaku grupe --</option>
             <option value="OL-OMGR_H-01/24">OL-OMGR_H-01/24</option>
@@ -116,14 +116,14 @@
     <div id="statusReportArea">
         <hr>
         <div class="section-title">Polusatni Izvještaj o Grupi</div>
-         
+        
         <div id="reportTimerBox">
             <div id="reportTimerLabel">Vrijeme do sljedećeg obaveznog izvještaja:</div>
             <div id="reportTimer">30:00</div>
         </div>
 
         <p style="font-size: 13px; color: #bbb; margin: 15px 0 5px 0;">Odaberite grupu i upišite trenutni status:</p>
-         
+        
         <select id="groupSelect">
             <option value="">-- Odaberite grupu --</option>
             <option value="Grupa 1">Online Grupa 1</option>
@@ -156,7 +156,7 @@
     let timerInterval = null;
     let nextCheckTimeout = null;
     let timeLeft = 60;
-     
+    
     let audioCtx = null;
     let alarmInterval = null;
 
@@ -167,7 +167,7 @@
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
-         
+        
         alarmInterval = setInterval(() => {
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
@@ -193,7 +193,7 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
         if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-         
+        
         let osc = audioCtx.createOscillator();
         let gain = audioCtx.createGain();
         osc.connect(gain);
@@ -228,23 +228,4 @@
 
         let statusPrijave = `🚀 **${studentName}** je započeo/la smjenu.`;
         if (sessionStorage.getItem("smjenaPokrenutaJednom") === "true") {
-            statusPrijave = `⚠️ **UPOZORENJE:** Korisnik **${studentName}** je ponovno pokrenuo aplikaciju (moguće zatvaranje taba ili osvježavanje stranice)!`;
-        }
-        sessionStorage.setItem("smjenaPokrenutaJednom", "true");
-
-        document.getElementById("loginArea").style.display = "none";
-        document.getElementById("alertArea").style.display = "block";
-        document.getElementById("statusReportArea").style.display = "block";
-        document.getElementById("incidentArea").style.display = "block";
-        document.getElementById("btnPotvrda").style.display = "none";
-        document.getElementById("timer").style.display = "none";
-
-        ukupnoSekundiRada = 0;
-        if(brojacRadaInterval) clearInterval(brojacRadaInterval);
-        brojacRadaInterval = setInterval(() => {
-            ukupnoSekundiRada++;
-        }, 1000);
-
-        posaljiPoruku(statusPrijave, WEBHOOK_URL);
-        rasporediSljedecuProvjeru();
-        pokreniPolusatniTajmer();
+            statusPrijave = `⚠️ **UPOZORENJE:** Korisnik **${studentName}** je ponovno pokrenuo aplikaciju (moguće zatvaranje taba ili osvježavanje
