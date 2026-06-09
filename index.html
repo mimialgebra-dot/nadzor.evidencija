@@ -245,7 +245,7 @@
         pokreniPolusatniTajmer();
     }
 
-    // NOVA FUNKCIJA: Slanje izoliranog incidenta s automatskim vremenom
+    // POPRAVLJENO: Dodavanje simbola rešetke za fiksno indeksiranje u tražilici
     function posaljiIncident() {
         const grupa = document.getElementById("incidentGroup").value;
         const kategorija = document.getElementById("incidentCategory").value;
@@ -257,13 +257,13 @@
         const sada = new Date();
         const točnoVrijeme = `${String(sada.getHours()).padStart(2, '0')}:${String(sada.getMinutes()).padStart(2, '0')}`;
 
-        // Format poruke prilagođen filtriranju po nazivu grupe
-        const porukaIncidenta = `⚠️ **[INCIDENT]** \`[${grupa}]\` | **${kategorija}**\n📌 **${točnoVrijeme}** - ${tekst} *(Zapisao: ${studentName})*`;
+        // Predznak # prisiljava Discord tražilicu da povuče kompletan pojam unatoč kosoj crti
+        const porukaIncidenta = `⚠️ **[INCIDENT]** #\`${grupa}\` | **${kategorija}**\n📌 **${točnoVrijeme}** - ${tekst} *(Zapisao: ${studentName})*`;
 
         posaljiPoruku(porukaIncidenta);
 
         document.getElementById("incidentText").value = "";
-        alert("Incident uspješno evidentiran i poslan na Discord!");
+        alert("Incident uspješno evidentiran!");
     }
 
     let reportTimeLeft = 30 * 60;
