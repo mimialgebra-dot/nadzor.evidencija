@@ -167,6 +167,32 @@
 
     let vrijemePocetkaSmjene = null;
 
+    // DODANO: Funkcija koja jednostavno iz sustava prepoznaje točan browser i OS
+    function dohvatiInformacijePreglednika() {
+        let ua = navigator.userAgent;
+        let browser = "Nepoznat preglednik";
+        let os = "Nepoznat OS";
+        
+        if (ua.indexOf("Win") != -1) os = "Windows PC";
+        else if (ua.indexOf("Mac") != -1) os = "Macintosh";
+        else if (ua.indexOf("Linux") != -1) os = "Linux";
+        else if (ua.indexOf("Android") != -1) os = "Android";
+        else if (ua.indexOf("like Mac") != -1) os = "iOS Uređaj";
+
+        if (ua.indexOf("Firefox") != -1) browser = "Firefox";
+        else if (ua.indexOf("SamsungBrowser") != -1) browser = "Samsung Browser";
+        else if (ua.indexOf("Opera") != -1 || ua.indexOf("OPR") != -1) browser = "Opera";
+        else if (ua.indexOf("Edge") != -1 || ua.indexOf("Edg") != -1) browser = "Microsoft Edge";
+        else if (ua.indexOf("Chrome") != -1) browser = "Google Chrome";
+        else if (ua.indexOf("Safari") != -1) browser = "Safari";
+        
+        return `💻 **Uređaj:** ${os} | 🌐 **Preglednik:** ${browser}`;
+    }
+
+    function svirajućiAlarm() {
+        // Zadržano točno kako je bilo
+    }
+
     function svirajAlarm() {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -236,9 +262,12 @@
             return;
         }
 
-        let statusPrijave = `🚀 **${studentName}** je započeo/la smjenu.`;
+        // POPRAVLJENO: Izvlačenje i dodavanje podataka o pregledniku u poruku prijave
+        let infoPreglednika = dohvatiInformacijePreglednika();
+        let statusPrijave = `🚀 **${studentName}** je započeo/la smjenu.\n${infoPreglednika}`;
+        
         if (sessionStorage.getItem("smjenaPokrenutaJednom") === "true") {
-            statusPrijave = `⚠️ **UPOZORENJE:** Korisnik **${studentName}** je ponovno pokrenuo aplikaciju (moguće zatvaranje taba ili osvježavanje stranice)!`;
+            statusPrijave = `⚠️ **UPOZORENJE:** Korisnik **${studentName}** je ponovno pokrenuo aplikaciju (moguće zatvaranje taba ili osvježavanje stranice)!\n${infoPreglednika}`;
         }
         sessionStorage.setItem("smjenaPokrenutaJednom", "true");
 
@@ -371,29 +400,24 @@
         pokreniPolusatniTajmer();
     }
 
-    // DODANO: Funkcija za prekid rada, slanje statistike i resetiranje sučelja
     function zavrsiSmjenu() {
         if (!confirm("Jeste li sigurni da želite završiti smjenu i odjaviti se?")) return;
 
         let konačnoVrijemeRada = formatirajVrijemeRada();
         let statusOdjave = `🏁 **${studentName}** je USPIJEŠNO ZAVRŠIO/LA SMJENU. (⏱️ Ukupno trajanje cijele smjene: ${konačnoVrijemeRada})`;
 
-        // Zaustavljanje svih aktivnih tajmera i alarma u pozadini
         clearInterval(timerInterval);
         clearInterval(reportTimerInterval);
         clearTimeout(nextCheckTimeout);
         zaustaviAlarm();
 
-        // Slanje obavijesti na Discord kanal
         posaljiPoruku(statusOdjave, WEBHOOK_URL);
 
-        // Resetiranje varijabli i brisanje sesije
         studentName = "";
         studentPinEntered = "";
         vrijemePocetkaSmjene = null;
         sessionStorage.removeItem("smjenaPokrenutaJednom");
 
-        // Vraćanje sučelja na početni ekran za prijavu
         document.getElementById("loginArea").style.display = "block";
         document.getElementById("alertArea").style.display = "none";
         document.getElementById("statusReportArea").style.display = "none";
